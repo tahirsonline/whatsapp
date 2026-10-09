@@ -1,0 +1,61 @@
+<?php
+require_once 'db.php';
+if (!isset($_SESSION['user_id']) || $_SESSION['is_admin'] != 1) {
+    die("رسائی کی اجازت نہیں ہے!");
+}
+
+// صارف ڈیلیٹ کرنے کی کمانڈ
+if (isset($_GET['delete'])) {
+    $del_id = $_GET['delete'];
+    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+    $stmt->execute([$del_id]);
+    header("Location: admin.php");
+    exit();
+}
+
+$stmt = $pdo->query("SELECT * FROM users");
+$stmt->execute();
+$all_users = $stmt->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>ایڈمن پینل - واٹس ایپ</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: #f0f2f5; display: block; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #00a884; color: white; }
+    </style>
+</head>
+<body>
+    <h2>ایڈمن پینل - کل صارفین</h2>
+    <a href="index.php">⬅ چیٹ پر واپس جائیں</a>
+    <table>
+        <tr>
+            <th>آئی ڈی</th>
+            <th>نام</th>
+            <th>ای میل</th>
+            <th>اسٹیٹس</th>
+            <th>ایکشن</th>
+        </tr>
+        <?php foreach($all_users as $usr): ?>
+        <tr>
+            <td><?= $usr['id'] ?></td>
+            <td><?= htmlspecialchars($usr['username']) ?></td>
+            <td><?= htmlspecialchars($usr['email']) ?></td>
+            <td><?= $usr['status'] ?></td>
+            <td>
+                <?php if($usr['id'] != $_SESSION['user_id']): ?>
+                    <a href="admin.php?delete=<?= $usr['id'] ?>" onclick="return confirm('کیا آپ واقعی اس صارف کو حذف کرنا چاہتے ہیں؟')">ڈیلیٹ کریں</a>
+                <?php else: ?>
+                    (آپ خود ہیں)
+                <?php endif; ?>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+</body>
+</html>
