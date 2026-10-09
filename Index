@@ -1,61 +1,176 @@
-<?php
-require_once 'db.php';
-if (!isset($_SESSION['user_id']) || $_SESSION['is_admin'] != 1) {
-    die("رسائی کی اجازت نہیں ہے!");
-}
-
-// صارف ڈیلیٹ کرنے کی کمانڈ
-if (isset($_GET['delete'])) {
-    $del_id = $_GET['delete'];
-    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-    $stmt->execute([$del_id]);
-    header("Location: admin.php");
-    exit();
-}
-
-$stmt = $pdo->query("SELECT * FROM users");
-$stmt->execute();
-$all_users = $stmt->fetchAll();
-?>
 <!DOCTYPE html>
 <html lang="ur" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>ایڈمن پینل - واٹس ایپ</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>واٹس ایپ ویب - سنگل فائل ایپ</title>
     <style>
-        body { background: #f0f2f5; display: block; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        th { background: #00a884; color: white; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background-color: #dadada; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .whatsapp-container { display: flex; width: 95%; max-width: 1100px; height: 90vh; background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 10px; overflow: hidden; }
+        
+        /* سائیڈ بار */
+        .sidebar { width: 35%; border-left: 1px solid #ddd; background: #f8f9fa; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; background: #00a884; color: white; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .user-list { overflow-y: auto; flex: 1; }
+        .user-item { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
+        .user-item:hover, .user-item.active { background: #f0f2f5; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-left: 15px; font-size: 18px; }
+        .user-info h4 { font-size: 16px; color: #333; }
+        .user-info p { font-size: 13px; color: #666; margin-top: 3px; }
+
+        /* چیٹ ونڈو */
+        .chat-window { width: 65%; display: flex; flex-direction: column; background: #efeae2; }
+        .chat-header { padding: 15px; background: #f0f2f5; border-bottom: 1px solid #ddd; display: flex; align-items: center; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        .message { max-width: 65%; padding: 10px 14px; border-radius: 8px; position: relative; word-wrap: break-word; font-size: 14px; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); }
+        .message.sent { background: #d9fdd3; align-self: flex-end; border-top-left-radius: 0; }
+        .message.received { background: #fff; align-self: flex-start; border-top-right-radius: 0; }
+        .message small { display: block; font-size: 10px; color: #777; text-align: left; margin-top: 4px; }
+        
+        /* ان پٹ ایریا */
+        .chat-input-area { padding: 12px 15px; background: #f0f2f5; display: flex; align-items: center; gap: 10px; }
+        .chat-input-area input { flex: 1; padding: 12px 15px; border: none; border-radius: 20px; outline: none; font-size: 14px; background: #fff; }
+        .chat-input-area button { background: #00a884; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: 0.2s; }
+        .chat-input-area button:hover { background: #01876f; }
+
+        /* رسپانسو ڈیزائن موبائیل کے لیے */
+        @media(max-width: 768px) {
+            .whatsapp-container { width: 100%; height: 100vh; border-radius: 0; }
+            .sidebar { width: 100%; }
+            .chat-window { display: none; width: 100%; }
+            .whatsapp-container.active-chat .sidebar { display: none; }
+            .whatsapp-container.active-chat .chat-window { display: flex; }
+        }
     </style>
 </head>
 <body>
-    <h2>ایڈمن پینل - کل صارفین</h2>
-    <a href="index.php">⬅ چیٹ پر واپس جائیں</a>
-    <table>
-        <tr>
-            <th>آئی ڈی</th>
-            <th>نام</th>
-            <th>ای میل</th>
-            <th>اسٹیٹس</th>
-            <th>ایکشن</th>
-        </tr>
-        <?php foreach($all_users as $usr): ?>
-        <tr>
-            <td><?= $usr['id'] ?></td>
-            <td><?= htmlspecialchars($usr['username']) ?></td>
-            <td><?= htmlspecialchars($usr['email']) ?></td>
-            <td><?= $usr['status'] ?></td>
-            <td>
-                <?php if($usr['id'] != $_SESSION['user_id']): ?>
-                    <a href="admin.php?delete=<?= $usr['id'] ?>" onclick="return confirm('کیا آپ واقعی اس صارف کو حذف کرنا چاہتے ہیں؟')">ڈیلیٹ کریں</a>
-                <?php else: ?>
-                    (آپ خود ہیں)
-                <?php endif; ?>
-            </td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
+
+    <div class="whatsapp-container" id="appContainer">
+        <!-- سائیڈ بار (دوستوں کی لسٹ) -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span>💬 واٹس ایپ چیٹ ایپ</span>
+                <span style="font-size: 12px; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;">لائیو</span>
+            </div>
+            <div class="user-list" id="userList">
+                <!-- جاوا اسکریپٹ کے ذریعے یوزر یہاں آئیں گے -->
+            </div>
+        </div>
+
+        <!-- چیٹ ایریا -->
+        <div class="chat-window">
+            <div class="chat-header" id="chatHeader">
+                <div class="avatar" id="activeAvatar" style="background: #00a884;">U</div>
+                <div class="user-info">
+                    <h4 id="activeUsername">چیٹ منتخب کریں</h4>
+                    <p id="activeStatus">آن لائن</p>
+                </div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div style="text-align: center; color: #777; margin-top: 50px;">گفتگو شروع کرنے کے لیے سائیڈ بار سے کسی دوست پر کلک کریں۔</div>
+            </div>
+            <div class="chat-input-area" id="inputArea" style="display: none;">
+                <input type="text" id="messageInput" placeholder="پیغام یہاں لکھیں..." autocomplete="off">
+                <button onclick="sendMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const users = [
+            { id: 1, name: "علی خان", status: "آن لائن", color: "#e91e63" },
+            { id: 2, name: "محمد احمد", status: "آخری بار دیکھا گیا 2 بجے", color: "#3f51b5" },
+            { id: 3, name: "فاطمہ بی بی", status: "آن لائن", color: "#009688" },
+            { id: 4, name: "ٹیکنالوجی گروپ", status: "3 اراکین", color: "#ff9800" }
+        ];
+
+        let currentUserId = null;
+        // لوکل اسٹوریج سے پرانے میسجز لوڈ کرنا
+        let messages = JSON.parse(localStorage.getItem('whatsapp_messages')) || {};
+
+        function renderUsers() {
+            const list = document.getElementById('userList');
+            list.innerHTML = '';
+            users.forEach(user => {
+                let div = document.createElement('div');
+                div.className = `user-item ${currentUserId === user.id ? 'active' : ''}`;
+                div.onclick = () => selectUser(user.id);
+                div.innerHTML = `
+                    <div class="avatar" style="background: ${user.color}">${user.name.charAt(0)}</div>
+                    <div class="user-info">
+                        <h4>${user.name}</h4>
+                        <p>${user.status}</p>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function selectUser(userId) {
+            currentUserId = userId;
+            let user = users.find(u => u.id === userId);
+            
+            document.getElementById('activeAvatar').innerText = user.name.charAt(0);
+            document.getElementById('activeAvatar').style.background = user.color;
+            document.getElementById('activeUsername').innerText = user.name;
+            document.getElementById('activeStatus').innerText = user.status;
+            document.getElementById('inputArea').style.display = 'flex';
+            
+            document.getElementById('appContainer').classList.add('active-chat');
+            renderMessages();
+            renderUsers();
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+            
+            if (!messages[currentUserId]) {
+                messages[currentUserId] = [];
+            }
+
+            messages[currentUserId].forEach(msg => {
+                let div = document.createElement('div');
+                div.className = `message ${msg.sender}`;
+                let time = new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                div.innerHTML = `${msg.text} <small>${time}</small>`;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMessage() {
+            let input = document.getElementById('messageInput');
+            let text = input.value.trim();
+            if (!text || !currentUserId) return;
+
+            // صارف کا پیغام شامل کریں
+            if (!messages[currentUserId]) messages[currentUserId] = [];
+            messages[currentUserId].push({ sender: 'sent', text: text, time: new Date().getTime() });
+            
+            input.value = '';
+            renderMessages();
+            localStorage.setItem('whatsapp_messages', JSON.stringify(messages));
+
+            // خودکار ریپلائی بوট (Auto Reply simulation)
+            setTimeout(() => {
+                messages[currentUserId].push({ sender: 'received', text: "موصول ہو گیا! شکریہ۔ 👍", time: new Date().getTime() });
+                renderMessages();
+                localStorage.setItem('whatsapp_messages', JSON.stringify(messages));
+            }, 1000);
+        }
+
+        // انٹر کی دبانے پر بھی میسج چلا جائے
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // فرسٹ رینڈر
+        renderUsers();
+    </script>
 </body>
 </html>
